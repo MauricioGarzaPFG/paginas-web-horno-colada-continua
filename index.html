@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Principal</title>
+
+    <style>
+        /* Estilo general de la página */
+        body {
+            font-family: Arial;
+            background-color: #f4f4f4;
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 40px;
+        }
+
+        /* Contenedor principal de los botones */
+        .container {
+            margin-top: 60px;
+        }
+
+        /* Estilo para todos los botones */
+        .btn {
+            display: block;
+            width: 300px;
+            margin: 20px auto;
+            padding: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+        }
+
+        /* Color individual para cada botón */
+        .btn:nth-child(2) {
+            background-color: #27ae60;
+        }
+
+        .btn:nth-child(3) {
+            background-color: #e67e22;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>Panel de Monitoreo para horno de colada continua</h1>
+
+<!-- Botones de navegación hacia cada sección del sistema -->
+<div class="container">
+
+    <button class="btn" onclick="irTemperaturaCorriente()">
+        Temperatura y Corriente
+    </button>
+
+    <button class="btn" onclick="irSistemaAgua()">
+        Estado del Sistema de Agua
+    </button>
+
+    <button class="btn" onclick="irOnOff()">
+        Control ON / OFF
+    </button>
+
+</div>
+
+<script>
+    /* Funciones de navegación, redirigen al usuario a cada página */
+
+    function irTemperaturaCorriente() {
+        window.location.href = "temperatura_corriente.html";
+    }
+
+    function irSistemaAgua() {
+        window.location.href = "sistema_agua.html";
+    }
+
+    function irOnOff() {
+        window.location.href = "control_onoff.html";
+    }
+
+</script>
+
+</body>
+</html>

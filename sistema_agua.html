@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Estado del Sistema de Agua</title>
+
+    <style>
+        /* Estilo general de la página */
+        body {
+            font-family: Arial;
+            background-color: #f4f4f4;
+            text-align: center;
+        }
+
+        /* Botón de regreso al menú principal */
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 15px;
+            background-color: #555;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        h1 {
+            margin-top: 60px;
+        }
+
+        /* Cuadrícula de tres columnas para mostrar cada variable */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 200px);
+            gap: 30px;
+            justify-content: center;
+            margin-top: 60px;
+        }
+
+        /* Estilo base de cada tarjeta de variable */
+        .column-box {
+            background-color: white;
+            border: 2px solid #888;
+            border-radius: 12px;
+            padding: 20px 15px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: background-color 0.3s, box-shadow 0.3s, border-color 0.3s;
+        }
+
+        /* Estilo de la tarjeta cuando se detecta una falla */
+        .column-box.alerta {
+            background-color: #ffe5e5;
+            border-color: #c0000a;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+            animation: parpadeo 1s infinite;
+        }
+
+        /* Animación de parpadeo para resaltar la alerta */
+        @keyframes parpadeo {
+            0%, 100% { box-shadow: 0 0 15px rgba(255, 0, 0, 0.5); }
+            50%      { box-shadow: 0 0 25px rgba(255, 0, 0, 0.9); }
+        }
+
+        /* Título de cada tarjeta */
+        .col-title {
+            font-weight: bold;
+            font-size: 18px;
+            text-align: center;
+            margin-bottom: 20px;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .item:last-child {
+            margin-bottom: 0;
+        }
+
+        .tag {
+            font-weight: bold;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        /* Indicador luz circular */
+        .light {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid gray;
+            background-color: transparent;
+        }
+
+        /* Verde para estado normal, rojo para falla */
+        .on-green {
+            background-color: green;
+            border-color: green;
+        }
+
+        .on-red {
+            background-color: red;
+            border-color: red;
+        }
+
+        /* Banner de alerta general, oculto por defecto */
+        #bannerAlerta {
+            display: none;
+            margin: 20px auto 0 auto;
+            padding: 15px;
+            width: 80%;
+            background-color: #c0000a;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+
+<body>
+
+<button class="back-btn" onclick="volverMenu()">← Menú</button>
+
+<h1>Estado del Sistema de Agua</h1>
+
+<!-- Banner que aparece si se detecta cualquier falla en el sistema -->
+<div id="bannerAlerta">⚠ ALERTA: Estado no deseado detectado en el sistema de agua</div>
+
+<div class="grid">
+
+    <!-- Tarjeta: nivel de agua del tanque -->
+    <div class="column-box" id="col1">
+        <div class="col-title">Nivel de agua del tanque</div>
+        <div class="item">
+            <div class="tag">OK</div>
+            <div id="l1" class="light"></div>
+        </div>
+        <div class="item">
+            <div class="tag">Falla</div>
+            <div id="l4" class="light"></div>
+        </div>
+    </div>
+
+    <!-- Tarjeta: presión en el lado derecho -->
+    <div class="column-box" id="col2">
+        <div class="col-title">Presión en lado derecho</div>
+        <div class="item">
+            <div class="tag">OK</div>
+            <div id="l2" class="light"></div>
+        </div>
+        <div class="item">
+            <div class="tag">Falla</div>
+            <div id="l5" class="light"></div>
+        </div>
+    </div>
+
+    <!-- Tarjeta: presión en el lado izquierdo -->
+    <div class="column-box" id="col3">
+        <div class="col-title">Presión en lado izquierdo</div>
+        <div class="item">
+            <div class="tag">OK</div>
+            <div id="l3" class="light"></div>
+        </div>
+        <div class="item">
+            <div class="tag">Falla</div>
+            <div id="l6" class="light"></div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+
+    /* Índice de cada variable dentro del archivo IO.html */
+    const idx = {
+        Tanque_lleno: 5,
+        Tanque_bajo: 6,
+        Presion_lado_izquierdo: 7,
+        Presion_lado_derecho: 8,
+        Falla_bomba_izquierda: 9,
+        Falla_bomba_derecha: 10
+    };
+
+    /* Lee los valores actuales de las variables desde el PLC */
+    async function leerIO() {
+        try {
+            const res = await fetch("IO.html");
+            const data = await res.text();
+
+            /* Separa cada valor en una línea independiente */
+            return data.trim().split(/\r?\n/);
+
+        } catch (e) {
+            console.log("Error leyendo IO:", e);
+            return [];
+        }
+    }
+
+    /* Actualiza los indicadores luminosos según el estado de cada variable */
+    async function actualizarLuces() {
+
+        let valores = await leerIO();
+
+        /* Lee el estado de cada variable del sistema, parseInt convierte un texto en número entero. */
+        let s1 = parseInt(valores[idx.Tanque_lleno]) === 1;
+        let s2 = parseInt(valores[idx.Presion_lado_derecho]) === 1;
+        let s3 = parseInt(valores[idx.Presion_lado_izquierdo]) === 1;
+        let s4 = parseInt(valores[idx.Tanque_bajo]) === 1;
+        let s5 = parseInt(valores[idx.Falla_bomba_derecha]) === 1;
+        let s6 = parseInt(valores[idx.Falla_bomba_izquierda]) === 1;
+
+        /* Enciende en verde los indicadores de estado normal */
+        controlarLuz("l1", s1, "green");
+        controlarLuz("l2", s2, "green");
+        controlarLuz("l3", s3, "green");
+
+        /* Enciende en rojo los indicadores de falla */
+        controlarLuz("l4", s4, "red");
+        controlarLuz("l5", s5, "red");
+        controlarLuz("l6", s6, "red");
+
+        /* Verifica si alguna tarjeta debe activar el estado de alerta */
+        var alerta1 = verificarAlerta(s4, "col1");
+        var alerta2 = verificarAlerta(s5, "col2");
+        var alerta3 = verificarAlerta(s6, "col3");
+
+        /* Muestra u oculta el banner general según si hay alguna falla activa */
+        var banner = document.getElementById("bannerAlerta");
+        if (alerta1 || alerta2 || alerta3) {
+            banner.style.display = "block";
+        } else {
+            banner.style.display = "none";
+        }
+    }
+
+    /* Enciende o apaga un indicador luminoso según el estado recibido */
+    function controlarLuz(id, activo, color) {
+        let luz = document.getElementById(id);
+        luz.classList.remove("on-green", "on-red");
+        if (activo) {
+            luz.classList.add(color === "green" ? "on-green" : "on-red");
+        }
+    }
+
+    /* Activa o desactiva el estilo de alerta en una tarjeta */
+    function verificarAlerta(activo, idCol) {
+        var col = document.getElementById(idCol);
+        if (activo) {
+            col.classList.add("alerta");
+            return true;
+        } else {
+            col.classList.remove("alerta");
+            return false;
+        }
+    }
+
+    /* Regresa al menú principal */
+    function volverMenu() {
+        window.location.href = "index.html";
+    }
+
+    /* Actualiza los indicadores cada 500 ms */
+    setInterval(actualizarLuces, 500);
+    actualizarLuces();
+
+</script>
+
+</body>
+</html>

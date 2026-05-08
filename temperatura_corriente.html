@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Monitoreo Corriente y Temperatura</title>
+
+    <style>
+        /* Estilo general de la página */
+        body {
+            font-family: Arial;
+            background-color: #f4f4f4;
+            text-align: center;
+        }
+
+        /* Botón de regreso al menú principal */
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 15px;
+            background-color: #555;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .section-title {
+            margin-top: 40px;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        /* Estilo base de cada tarjeta de variable */
+        .card {
+            display: inline-block;
+            width: 250px;
+            margin: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+
+        /* Estilo de la tarjeta cuando se detecta una falla */
+        .card.alerta {
+            background-color: #ffe5e5;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+            animation: parpadeo 1s infinite;
+        }
+
+        /* El valor numérico cambia a rojo en estado de alerta */
+        .card.alerta .value {
+            color: #c0000a;
+        }
+
+        /* Animación de parpadeo para resaltar la alerta */
+        @keyframes parpadeo {
+            0%, 100% { box-shadow: 0 0 15px rgba(255, 0, 0, 0.5); }
+            50%      { box-shadow: 0 0 25px rgba(255, 0, 0, 0.9); }
+        }
+
+        /* Valor numérico grande dentro de la tarjeta */
+        .value {
+            font-size: 40px;
+            font-weight: bold;
+        }
+
+        /* Mensaje de alerta dentro de la tarjeta, oculto por defecto */
+        .alerta-msg {
+            margin-top: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #c0000a;
+            display: none;
+        }
+
+        /* El mensaje se muestra solo cuando la tarjeta está en alerta */
+        .card.alerta .alerta-msg {
+            display: block;
+        }
+
+        /* Barra de progreso que representa el valor visualmente */
+        .bar {
+            width: 100%;
+            height: 20px;
+            background: #ddd;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        /* Relleno de la barra, su ancho se ajusta según el valor */
+        .fill {
+            height: 100%;
+            border-radius: 10px;
+            background: green;
+            width: 0%;
+        }
+
+        /* Banner de alerta general, oculto por defecto */
+        #bannerAlerta {
+            display: none;
+            margin: 20px auto;
+            padding: 15px;
+            width: 80%;
+            background-color: #c0000a;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+
+<body>
+
+<button class="back-btn" onclick="volverMenu()">← Menú</button>
+
+<h1>Monitoreo de Corriente y Temperatura</h1>
+
+<!-- Banner que aparece si alguna línea de corriente está por debajo del umbral -->
+<div id="bannerAlerta">⚠ ALERTA: Corriente baja detectada en una o más líneas (≤ 90 A)</div>
+
+<!-- Tarjetas de monitoreo de corriente por línea -->
+<div class="section-title">Corriente</div>
+
+<div class="card" id="cardL1">
+    <h3>Línea 1</h3>
+    <div class="value" id="l1Value">0 A</div>
+    <div class="bar"><div id="l1Bar" class="fill"></div></div>
+    <div class="alerta-msg">⚠ Corriente baja</div>
+</div>
+
+<div class="card" id="cardL2">
+    <h3>Línea 2</h3>
+    <div class="value" id="l2Value">0 A</div>
+    <div class="bar"><div id="l2Bar" class="fill"></div></div>
+    <div class="alerta-msg">⚠ Corriente baja</div>
+</div>
+
+<div class="card" id="cardL3">
+    <h3>Línea 3</h3>
+    <div class="value" id="l3Value">0 A</div>
+    <div class="bar"><div id="l3Bar" class="fill"></div></div>
+    <div class="alerta-msg">⚠ Corriente baja</div>
+</div>
+
+<!-- Tarjetas de monitoreo de temperatura -->
+<div class="section-title">Temperatura</div>
+
+<div class="card">
+    <h3>Temperatura 1</h3>
+    <div class="value" id="t1Value">0 °C</div>
+    <div class="bar"><div id="t1Bar" class="fill"></div></div>
+</div>
+
+<div class="card">
+    <h3>Temperatura 2</h3>
+    <div class="value" id="t2Value">0 °C</div>
+    <div class="bar"><div id="t2Bar" class="fill"></div></div>
+</div>
+
+<script>
+
+    /* Valores máximos para escalar las barras de progreso */
+    const MAX_CORRIENTE = 200;
+    const MAX_TEMP = 1400;
+
+    /* Umbral mínimo de corriente aceptable */
+    const UMBRAL_CORRIENTE_BAJA = 90;
+
+    /* Índice de cada variable dentro del archivo IO.html */
+    const idx = {
+        Corriente_1: 0,
+        Corriente_2: 1,
+        Corriente_3: 2,
+        Temperatura_1: 3,
+        Temperatura_2: 4
+    };
+
+    /* Lee los valores actuales de las variables desde el PLC */
+    async function leerIO() {
+        try {
+            const res = await fetch("IO.html");
+            const data = await res.text();
+
+            /* Separa cada valor en una línea independiente */
+            return data.trim().split(/\r?\n/);
+
+        } catch (e) {
+            console.log("Error leyendo IO:", e);
+            return [];
+        }
+    }
+
+    /* Activa o desactiva el estilo de alerta en una tarjeta según el valor recibido */
+    function verificarAlerta(valor, idCard) {
+        var card = document.getElementById(idCard);
+        if (valor <= UMBRAL_CORRIENTE_BAJA) {
+            card.classList.add("alerta");
+            return true;
+        } else {
+            card.classList.remove("alerta");
+            return false;
+        }
+    }
+
+    /* Actualiza todos los valores y barras de progreso en la interfaz */
+    async function actualizarDatos() {
+
+        let valores = await leerIO();
+
+        /* Convierte los valores de texto a números decimales.
+           Si el valor no existe o es inválido, usa 0 como valor por defecto */
+        let l1 = parseFloat(valores[idx.Corriente_1]?.trim()) || 0;
+        let l2 = parseFloat(valores[idx.Corriente_2]?.trim()) || 0;
+        let l3 = parseFloat(valores[idx.Corriente_3]?.trim()) || 0;
+
+        let t1 = parseFloat(valores[idx.Temperatura_1]?.trim()) || 0;
+        let t2 = parseFloat(valores[idx.Temperatura_2]?.trim()) || 0;
+
+        /* Muestra los valores de corriente en pantalla */
+        document.getElementById("l1Value").innerHTML = l1 + " A";
+        document.getElementById("l2Value").innerHTML = l2 + " A";
+        document.getElementById("l3Value").innerHTML = l3 + " A";
+
+        /* Ajusta el ancho de cada barra proporcional al valor máximo.
+           Math.min evita que la barra supere el 100% */
+        document.getElementById("l1Bar").style.width = Math.min((l1 / MAX_CORRIENTE * 100), 100) + "%";
+        document.getElementById("l2Bar").style.width = Math.min((l2 / MAX_CORRIENTE * 100), 100) + "%";
+        document.getElementById("l3Bar").style.width = Math.min((l3 / MAX_CORRIENTE * 100), 100) + "%";
+
+        /* Verifica si alguna línea está por debajo del umbral */
+        var alerta1 = verificarAlerta(l1, "cardL1");
+        var alerta2 = verificarAlerta(l2, "cardL2");
+        var alerta3 = verificarAlerta(l3, "cardL3");
+
+        /* Muestra u oculta el banner general según si hay alguna alerta activa */
+        var banner = document.getElementById("bannerAlerta");
+        if (alerta1 || alerta2 || alerta3) {
+            banner.style.display = "block";
+        } else {
+            banner.style.display = "none";
+        }
+
+        /* Muestra los valores de temperatura en pantalla */
+        document.getElementById("t1Value").innerHTML = t1 + " °C";
+        document.getElementById("t2Value").innerHTML = t2 + " °C";
+
+        /* Ajusta el ancho de las barras de temperatura */
+        document.getElementById("t1Bar").style.width = Math.min((t1 / MAX_TEMP * 100), 100) + "%";
+        document.getElementById("t2Bar").style.width = Math.min((t2 / MAX_TEMP * 100), 100) + "%";
+    }
+
+    /* Regresa al menú principal */
+    function volverMenu() {
+        window.location.href = "index.html";
+    }
+
+    /* Actualiza los datos cada 500 ms */
+    setInterval(actualizarDatos, 500);
+    actualizarDatos();
+
+</script>
+
+</body>
+</html>
