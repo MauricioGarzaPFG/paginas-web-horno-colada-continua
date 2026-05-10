@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Dashboard PLC</title>
+
+<style>
+body {
+    font-family: Arial;
+    text-align: center;
+    background: #ffffff;
+    color: #000;
+}
+
+#conteo {
+    font-size: 50px;
+    color: #007bff;
+}
+
+button {
+    padding: 12px 25px;
+    margin: 10px;
+    font-size: 18px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.btn-sumar { background: #28a745; color: white; }
+.btn-reset { background: #dc3545; color: white; }
+</style>
+
+</head>
+
+<body>
+
+<h1>Pruebas servidor PLC</h1>
+
+<h2>Conteo</h2>
+<div id="conteo">0</div>
+
+<button class="btn-sumar" onclick="sumar()">Enviar señal</button>
+<button class="btn-reset" onclick="reinicio()">Reset</button>
+
+<iframe name="oculto" style="display:none;"></iframe>
+
+<!-- FORMULARIOS OCULTOS -->
+<form id="formSumar" method="post" action="sumar.html" target="oculto" style="display:none;">
+    <input type="hidden" name='"DB_Web".Entrada' value="1">
+</form>
+
+<form id="formReset" method="post" action="reinicio.html" target="oculto" style="display:none;">
+    <input type="hidden" name='"DB_Web".Reinicio' value="1">
+</form>
+
+<script>
+
+async function actualizar() {
+    try {
+        const res = await fetch("IOContador.html");
+        const data = await res.text();
+        document.getElementById("conteo").innerText = data.trim();
+    } catch (e) {
+        console.log("Error:", e);
+    }
+}
+setInterval(actualizar, 300);
+
+
+
+function sumar() {
+    document.getElementById("formSumar").submit();
+}
+
+
+
+function reinicio() {
+    document.getElementById("formReset").submit();
+}
+</script>
+
+</body>
+</html>
