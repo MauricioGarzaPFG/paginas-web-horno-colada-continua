@@ -169,7 +169,7 @@
     const MAX_TEMP = 1400;
 
     /* Umbral mínimo de corriente aceptable */
-    const UMBRAL_CORRIENTE_BAJA = 90;
+    const UMBRAL_CORRIENTE_BAJA = 80;
 
     /* Índice de cada variable dentro del archivo IO.html */
     const idx = {
@@ -177,7 +177,8 @@
         Corriente_2: 1,
         Corriente_3: 2,
         Temperatura_1: 3,
-        Temperatura_2: 4
+        Temperatura_2: 4,
+        Estado_horno: 11
     };
 
     /* Lee los valores actuales de las variables desde el PLC */
@@ -195,10 +196,11 @@
         }
     }
 
-    /* Activa o desactiva el estilo de alerta en una tarjeta según el valor recibido */
-    function verificarAlerta(valor, idCard) {
+    /* Activa o desactiva las alertas en una tarjeta según el valor del estado del horno.
+       Si el horno está apagado, fuerza el estado normal sin importar la corriente. */
+    function verificarAlerta(valor, idCard, hornoEncendido) {
         var card = document.getElementById(idCard);
-        if (valor <= UMBRAL_CORRIENTE_BAJA) {
+        if (hornoEncendido && valor <= UMBRAL_CORRIENTE_BAJA) {
             card.classList.add("alerta");
             return true;
         } else {
@@ -221,6 +223,9 @@
         let t1 = parseFloat(valores[idx.Temperatura_1]?.trim()) || 0;
         let t2 = parseFloat(valores[idx.Temperatura_2]?.trim()) || 0;
 
+        /* Lee el estado del horno: true si está encendido (valor 1), false si está apagado */
+        let hornoEncendido = parseInt(valores[idx.Estado_horno]) === 1;
+
         /* Muestra los valores de corriente en pantalla */
         document.getElementById("l1Value").innerHTML = l1 + " A";
         document.getElementById("l2Value").innerHTML = l2 + " A";
@@ -232,10 +237,11 @@
         document.getElementById("l2Bar").style.width = Math.min((l2 / MAX_CORRIENTE * 100), 100) + "%";
         document.getElementById("l3Bar").style.width = Math.min((l3 / MAX_CORRIENTE * 100), 100) + "%";
 
-        /* Verifica si alguna línea está por debajo del umbral */
-        var alerta1 = verificarAlerta(l1, "cardL1");
-        var alerta2 = verificarAlerta(l2, "cardL2");
-        var alerta3 = verificarAlerta(l3, "cardL3");
+        /* Verifica si alguna línea está por debajo del umbral.
+           Las alertas solo se activan si el horno está encendido. */
+        var alerta1 = verificarAlerta(l1, "cardL1", hornoEncendido);
+        var alerta2 = verificarAlerta(l2, "cardL2", hornoEncendido);
+        var alerta3 = verificarAlerta(l3, "cardL3", hornoEncendido);
 
         /* Muestra u oculta el banner general según si hay alguna alerta activa */
         var banner = document.getElementById("bannerAlerta");
