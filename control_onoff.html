@@ -33,7 +33,7 @@
             margin-top: 40px;
         }
 
-        /* Estilo base para los botones ON y OFF */
+        /* Estilo base para los botones habilitar y deshabilitar */
         .btn {
             width: 200px;
             padding: 20px;
@@ -68,18 +68,24 @@
 
 <button class="back-btn" onclick="volverMenu()">← Menú</button>
 
-<h1>Control del Sistema</h1>
+<h1>Control del Sistema de Encendido Automático</h1>
 
 <div class="container">
     <!-- Botones para enviar comandos de encendido y apagado -->
-    <button class="btn on" onclick="encender()">ON</button>
-    <button class="btn off" onclick="apagar()">OFF</button>
+    <button class="btn on" onclick="encender()">Habilitar</button>
+    <button class="btn off" onclick="apagar()">Deshabilitar</button>
 
-    <!-- Muestra el estado actual del horno leído desde el PLC -->
+    <!-- Muestra el estado del encendido automático leído desde el PLC -->
     <div class="estado">
         <!-- AWP_Out_Variable Name='"DB_Web".Estado_horno' -->
-        Estado del horno:
+        Estado de encendido automático del horno:
         <span id="estadoHorno">---</span>
+    </div>
+
+    <!-- Muestra el estado real del horno leído desde el PLC -->
+    <div class="estado">
+        Estado del horno:
+        <span id="estadoReal">---</span>
     </div>
 </div>
 
@@ -100,7 +106,8 @@
 
     /* Índice de cada variable dentro del archivo IO.html */
     const idx = {
-        Estado_horno: 11
+        Estado_horno: 11,
+        OnOff_horno: 12
     };
 
     /* Lee los valores actuales desde el PLC y actualiza la interfaz */
@@ -112,16 +119,28 @@
             /* Separa cada valor en una línea independiente */
             let valores = data.trim().split(/\r?\n/);
 
-            /* Interpreta el valor como encendido (1) o apagado (0), parseInt convierte un texto en número entero. */
-            let estado = parseInt(valores[idx.Estado_horno]) === 1;
+            /* Interpreta el valor de la habilitación como habilitado (1) o deshabilitado (0) */
+            let habilitado = parseInt(valores[idx.OnOff_horno]) === 1;
 
-            /* Actualiza el texto y color según el estado del horno */
-            if (estado) {
-                document.getElementById("estadoHorno").innerText = "ENCENDIDO";
+            /* Actualiza el texto y color según el estado de habilitación */
+            if (habilitado) {
+                document.getElementById("estadoHorno").innerText = "HABILITADO";
                 document.getElementById("estadoHorno").style.color = "#27ae60";
             } else {
-                document.getElementById("estadoHorno").innerText = "APAGADO";
+                document.getElementById("estadoHorno").innerText = "DESHABILITADO";
                 document.getElementById("estadoHorno").style.color = "#e74c3c";
+            }
+
+            /* Interpreta el valor del horno como encendido (1) o apagado (0) */
+            let encendido = parseInt(valores[idx.Estado_horno]) === 1;
+
+            /* Actualiza el texto y color según el estado real del horno */
+            if (encendido) {
+                document.getElementById("estadoReal").innerText = "ENCENDIDO";
+                document.getElementById("estadoReal").style.color = "#27ae60";
+            } else {
+                document.getElementById("estadoReal").innerText = "APAGADO";
+                document.getElementById("estadoReal").style.color = "#e74c3c";
             }
 
         } catch (e) {
@@ -135,7 +154,7 @@
 
     /* Solicita confirmación antes de enviar el comando de encendido */
     function encender() {
-        let confirmacion = confirm("¿Está seguro de que desea ENCENDER el sistema?");
+        let confirmacion = confirm("¿Está seguro de que desea HABILITAR el encendido automático?");
         if (confirmacion) {
             document.getElementById("formOn").submit();
             setTimeout(actualizar, 300);
@@ -144,7 +163,7 @@
 
     /* Solicita confirmación antes de enviar el comando de apagado */
     function apagar() {
-        let confirmacion = confirm("¿Está seguro de que desea APAGAR el sistema?");
+        let confirmacion = confirm("¿Está seguro de que desea DESHABILITAR el encendido automático?");
         if (confirmacion) {
             document.getElementById("formOff").submit();
             setTimeout(actualizar, 300);
